@@ -1,4 +1,3 @@
-# dermind-capstone
 # DerMind — Dashboard Capstone Data Science
 
 ## Cara Menjalankan Dashboard
