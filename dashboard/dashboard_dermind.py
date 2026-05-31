@@ -7,6 +7,7 @@ import seaborn as sns
 from collections import Counter
 import zipfile
 import os
+import gdown
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -21,6 +22,9 @@ DATA_DIR = "data"
 ZIP_PATH = os.path.join(DATA_DIR, "dataset.zip")
 
 def extract_if_needed():
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    
     required_files = [
         "master_mental_health_clean.csv",
         "HAM10000_clean.csv", 
@@ -28,20 +32,46 @@ def extract_if_needed():
         "master_sephora.csv",
         "master_skin_image_manifest.csv"
     ]
-    
+
     all_exist = all(os.path.exists(os.path.join(DATA_DIR, f)) for f in required_files)
     
     if not all_exist:
-        if os.path.exists(ZIP_PATH):
-            with st.spinner("📦 Mengekstrak dataset... (hanya sekali)"):
-                with zipfile.ZipFile(ZIP_PATH, "r") as z:
-                    z.extractall(DATA_DIR)
-            st.toast("✅ Dataset berhasil diekstrak!", icon="🎉")
-        else:
-            st.error(f"❌ File tidak ditemukan: {ZIP_PATH}\n\n"
-                     f"Pastikan file `dataset.zip` ada di folder `data/`")
-            st.stop()
+        file_id = "1VZCns1l40cqJQvpOgWK_oUyrpn_xrMQ3"
+        url = f"https://drive.google.com/uc?id={file_id}"
+        zip_path = os.path.join(DATA_DIR, "dataset.zip")
+        
+        with st.spinner("📥 Mengunduh dataset dari Google Drive..."):
+            try:
+                if not os.path.exists(zip_path):
+                    gdown.download(url, zip_path, quiet=False)
 
+                with zipfile.ZipFile(zip_path, "r") as z:
+                    for member in z.namelist():
+                        z.extract(member, DATA_DIR)
+
+                        if "/" in member or "\\" in member:
+                            filename = os.path.basename(member)
+                            src = os.path.join(DATA_DIR, member)
+                            dst = os.path.join(DATA_DIR, filename)
+                            if os.path.exists(src) and not os.path.exists(dst):
+                                import shutil
+                                shutil.move(src, dst)
+                
+                for root, dirs, files in os.walk(DATA_DIR, topdown=False):
+                    for name in dirs:
+                        dir_path = os.path.join(root, name)
+                        try:
+                            if not os.listdir(dir_path):
+                                os.rmdir(dir_path)
+                        except:
+                            pass
+                
+                st.toast("✅ Dataset berhasil diunduh dan diekstrak!", icon="🎉")
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+                st.stop()
 extract_if_needed()
 
 st.markdown("""
@@ -206,11 +236,11 @@ def darkfig():
 
 @st.cache_data(show_spinner=False)
 def load():
-    mh   = pd.read_csv(os.path.join(DATA_DIR, "data/master_mental_health_clean.csv"))
-    skin = pd.read_csv(os.path.join(DATA_DIR, "data/master_skin_image_manifest.csv"))
-    ham  = pd.read_csv(os.path.join(DATA_DIR, "data/HAM10000_clean.csv"))
-    sep  = pd.read_csv(os.path.join(DATA_DIR, "data/master_sephora.csv"), low_memory=False)
-    life = pd.read_csv(os.path.join(DATA_DIR, "data/healthy_lifestyle_city_2021_cleaned.csv"))
+    mh   = pd.read_csv(os.path.join(DATA_DIR, "master_mental_health_clean.csv"))
+    skin = pd.read_csv(os.path.join(DATA_DIR, "master_skin_image_manifest.csv"))
+    ham  = pd.read_csv(os.path.join(DATA_DIR, "HAM10000_clean.csv"))
+    sep  = pd.read_csv(os.path.join(DATA_DIR, "master_sephora.csv"), low_memory=False)
+    life = pd.read_csv(os.path.join(DATA_DIR, "healthy_lifestyle_city_2021_cleaned.csv"))
     life.columns = ["city","rank","sunshine_hours","water_cost","obesity_levels",
                     "life_expectancy","pollution_index","hours_worked",
                     "happiness","outdoor_activities","takeout_places","gym_cost"]
